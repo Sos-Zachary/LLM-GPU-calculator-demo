@@ -29,6 +29,8 @@ import {
   ChevronDown,
   BookOpen,
   Lightbulb,
+  Check,
+  ChevronDown,
 } from 'lucide-react';
 import {
   BarChart,
@@ -49,6 +51,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 
@@ -164,6 +167,7 @@ function AppContent() {
   const isDark = theme === 'dark';
 
   const [selectedModelId, setSelectedModelId] = useState(qwen35Models[4].id);
+  const [modelOpen, setModelOpen] = useState(false);
   const [selectedQuantId, setSelectedQuantId] = useState('int4-awq');
   const [selectedEngineId, setSelectedEngineId] = useState(inferenceEngines[0].id);
   const [contextLength, setContextLength] = useState(32768);
@@ -264,23 +268,49 @@ function AppContent() {
               <Box className="w-4 h-4" style={{ color: isDark ? '#60a5fa' : '#2563eb' }} />
               <span className="text-sm font-bold" style={{ color: isDark ? '#e2e8f0' : '#1e293b' }}>选择模型</span>
             </div>
-            <Select value={selectedModelId} onValueChange={setSelectedModelId}>
-              <SelectTrigger className="h-8 text-sm font-medium border" style={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: isDark ? '#334155' : '#cbd5e1', color: isDark ? '#f1f5f9' : '#0f172a' }}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-none overflow-visible" style={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: isDark ? '#334155' : '#cbd5e1' }}>
-                {qwen35Models.map(m => (
-                  <SelectItem key={m.id} value={m.id} style={{ color: isDark ? '#f1f5f9' : '#0f172a' }}>
-                    <div className="flex items-center gap-2 py-0.5">
-                      <span className="font-semibold text-sm">{m.name}</span>
-                      <Badge className="text-[10px] px-1 py-0" style={{ backgroundColor: m.architecture === 'MoE' ? (isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.1)') : (isDark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.1)'), color: m.architecture === 'MoE' ? (isDark ? '#fbbf24' : '#b45309') : (isDark ? '#60a5fa' : '#2563eb') }}>
-                        {m.architecture === 'MoE' ? `${m.totalParams}B/${m.activeParams}B` : `${m.totalParams}B`}
-                      </Badge>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={modelOpen} onOpenChange={setModelOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  className="flex h-8 w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm font-medium whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
+                  style={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: isDark ? '#334155' : '#cbd5e1', color: isDark ? '#f1f5f9' : '#0f172a' }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm">{model.name}</span>
+                    <Badge className="text-[10px] px-1 py-0" style={{ backgroundColor: model.architecture === 'MoE' ? (isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.1)') : (isDark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.1)'), color: model.architecture === 'MoE' ? (isDark ? '#fbbf24' : '#b45309') : (isDark ? '#60a5fa' : '#2563eb') }}>
+                      {model.architecture === 'MoE' ? `${model.totalParams}B/${model.activeParams}B` : `${model.totalParams}B`}
+                    </Badge>
+                  </div>
+                  <ChevronDown className="w-4 h-4 opacity-50" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0" align="start" sideOffset={4} style={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: isDark ? '#334155' : '#cbd5e1' }}>
+                <div className="flex flex-col gap-0.5 p-1">
+                  {qwen35Models.map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => { setSelectedModelId(m.id); setModelOpen(false); }}
+                      className="flex items-center justify-between w-full rounded-sm px-2 py-1.5 text-left text-sm transition-colors"
+                      style={{
+                        backgroundColor: selectedModelId === m.id
+                          ? (isDark ? 'rgba(59,130,246,0.2)' : 'rgba(37,99,235,0.1)')
+                          : 'transparent',
+                        color: isDark ? '#f1f5f9' : '#0f172a',
+                      }}
+                    >
+                      <div className="flex items-center gap-2 py-0.5">
+                        <span className="font-semibold text-sm">{m.name}</span>
+                        <Badge className="text-[10px] px-1 py-0" style={{ backgroundColor: m.architecture === 'MoE' ? (isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.1)') : (isDark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.1)'), color: m.architecture === 'MoE' ? (isDark ? '#fbbf24' : '#b45309') : (isDark ? '#60a5fa' : '#2563eb') }}>
+                          {m.architecture === 'MoE' ? `${m.totalParams}B/${m.activeParams}B` : `${m.totalParams}B`}
+                        </Badge>
+                      </div>
+                      {selectedModelId === m.id && (
+                        <Check className="w-4 h-4 shrink-0" style={{ color: isDark ? '#60a5fa' : '#2563eb' }} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
             <div className="grid grid-cols-2 gap-1.5 mt-2">
               {[
                 { label: '层数', value: model.layers },
