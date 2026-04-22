@@ -600,21 +600,21 @@ function AppContent() {
             <div className="space-y-2 mt-2">
               <FormulaBlock
                 title="模型权重"
-                formula={`${model.totalParams}B × ${quant.bytesPerParam}B × 10⁹ / 2³⁰`}
+                formula={`${model.totalParams}B × ${quant.bytesPerParam}B × 10⁹ / 1024³`}
                 result={`${vram.modelWeights.toFixed(2)} GB`}
                 color="#3b82f6"
                 isDark={isDark}
               />
               <FormulaBlock
                 title="KV Cache"
-                formula={`2 × ${model.layers} × ${model.numKVHeads} × ${model.headDim} × ${(contextLength / 1024).toFixed(0)}K × ${concurrency} × ${quant.bits <= 4 ? 2 : quant.bytesPerParam}B / 2³⁰`}
+                formula={`2 × ${model.layers} × ${model.numKVHeads} × ${model.headDim} × ${(contextLength / 1024).toFixed(0)}K × ${concurrency} × ${quant.bits <= 4 ? 2 : quant.bytesPerParam}B / 1024³`}
                 result={`${vram.kvCache.toFixed(2)} GB`}
                 color="#f59e0b"
                 isDark={isDark}
               />
               <FormulaBlock
                 title="激活值"
-                formula={`${concurrency} × ${(contextLength / 1024).toFixed(0)}K × ${model.hiddenSize} × 18 × ${quant.bytesPerParam}B / 2³⁰`}
+                formula={`${concurrency} × ${(contextLength / 1024).toFixed(0)}K × ${model.hiddenSize} × 18 × ${quant.bytesPerParam}B / 1024³`}
                 result={`${vram.activations.toFixed(2)} GB`}
                 color="#10b981"
                 isDark={isDark}
