@@ -296,6 +296,9 @@ function AppContent() {
                     >
                       <div className="flex items-center gap-2 py-0.5">
                         <span className="font-semibold text-sm">{m.name}</span>
+                        <Badge className="text-[10px] px-1 py-0" style={{ backgroundColor: m.architecture === 'MoE' ? (isDark ? 'rgba(245,158,11,0.2)' : 'rgba(245,158,11,0.15)') : (isDark ? 'rgba(59,130,246,0.2)' : 'rgba(59,130,246,0.15)'), color: m.architecture === 'MoE' ? (isDark ? '#fbbf24' : '#b45309') : (isDark ? '#60a5fa' : '#2563eb'), border: `1px solid ${m.architecture === 'MoE' ? (isDark ? 'rgba(245,158,11,0.3)' : 'rgba(245,158,11,0.25)') : (isDark ? 'rgba(59,130,246,0.3)' : 'rgba(59,130,246,0.25)')}` }}>
+                          {m.architecture}
+                        </Badge>
                         <Badge className="text-[10px] px-1 py-0" style={{ backgroundColor: m.architecture === 'MoE' ? (isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.1)') : (isDark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.1)'), color: m.architecture === 'MoE' ? (isDark ? '#fbbf24' : '#b45309') : (isDark ? '#60a5fa' : '#2563eb') }}>
                           {m.architecture === 'MoE' ? `${m.totalParams}B/${m.activeParams}B` : `${m.totalParams}B`}
                         </Badge>
