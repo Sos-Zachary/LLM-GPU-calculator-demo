@@ -29,6 +29,7 @@ import {
   ChevronDown,
   BookOpen,
   Lightbulb,
+  Check,
 } from 'lucide-react';
 import {
   BarChart,
@@ -264,23 +265,34 @@ function AppContent() {
               <Box className="w-4 h-4" style={{ color: isDark ? '#60a5fa' : '#2563eb' }} />
               <span className="text-sm font-bold" style={{ color: isDark ? '#e2e8f0' : '#1e293b' }}>选择模型</span>
             </div>
-            <Select value={selectedModelId} onValueChange={setSelectedModelId}>
-              <SelectTrigger className="h-8 text-sm font-medium border" style={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: isDark ? '#334155' : '#cbd5e1', color: isDark ? '#f1f5f9' : '#0f172a' }}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent style={{ backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: isDark ? '#334155' : '#cbd5e1' }}>
-                {qwen35Models.map(m => (
-                  <SelectItem key={m.id} value={m.id} style={{ color: isDark ? '#f1f5f9' : '#0f172a' }}>
-                    <div className="flex items-center gap-2 py-0.5">
-                      <span className="font-semibold text-sm">{m.name}</span>
-                      <Badge className="text-[10px] px-1 py-0" style={{ backgroundColor: m.architecture === 'MoE' ? (isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.1)') : (isDark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.1)'), color: m.architecture === 'MoE' ? (isDark ? '#fbbf24' : '#b45309') : (isDark ? '#60a5fa' : '#2563eb') }}>
-                        {m.architecture === 'MoE' ? `${m.totalParams}B/${m.activeParams}B` : `${m.totalParams}B`}
-                      </Badge>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-1">
+              {qwen35Models.map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => setSelectedModelId(m.id)}
+                  className="flex items-center justify-between w-full rounded-lg px-2.5 py-2 text-left text-sm transition-colors"
+                  style={{
+                    backgroundColor: selectedModelId === m.id
+                      ? (isDark ? 'rgba(59,130,246,0.2)' : 'rgba(37,99,235,0.1)')
+                      : 'transparent',
+                    color: isDark ? '#f1f5f9' : '#0f172a',
+                    border: selectedModelId === m.id
+                      ? `1px solid ${isDark ? 'rgba(59,130,246,0.4)' : 'rgba(37,99,235,0.3)'}`
+                      : '1px solid transparent',
+                  }}
+                >
+                  <div className="flex items-center gap-2 py-0.5">
+                    <span className="font-semibold">{m.name}</span>
+                    <Badge className="text-[10px] px-1 py-0" style={{ backgroundColor: m.architecture === 'MoE' ? (isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.1)') : (isDark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.1)'), color: m.architecture === 'MoE' ? (isDark ? '#fbbf24' : '#b45309') : (isDark ? '#60a5fa' : '#2563eb') }}>
+                      {m.architecture === 'MoE' ? `${m.totalParams}B/${m.activeParams}B` : `${m.totalParams}B`}
+                    </Badge>
+                  </div>
+                  {selectedModelId === m.id && (
+                    <Check className="w-4 h-4 shrink-0" style={{ color: isDark ? '#60a5fa' : '#2563eb' }} />
+                  )}
+                </button>
+              ))}
+            </div>
             <div className="grid grid-cols-2 gap-1.5 mt-2">
               {[
                 { label: '层数', value: model.layers },
