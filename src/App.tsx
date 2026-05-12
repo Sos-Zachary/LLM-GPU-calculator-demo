@@ -599,7 +599,7 @@ function AppContent() {
         </div>
 
         {/* ====== RIGHT COLUMN: Stacked Info Cards ====== */}
-        <div className="col-span-3 flex flex-col gap-2 min-h-0 overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin' }}>
+        <div className="col-span-3 flex flex-col gap-1.5 min-h-0 overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin' }}
           {/* Formula Accordion */}
           <AccordionCard title="计算公式" icon={<BookOpen className="w-4 h-4" />} defaultOpen isDark={isDark}>
             <div className="space-y-2 mt-2">
@@ -701,7 +701,7 @@ function AppContent() {
 
           {/* Factors Accordion */}
           <AccordionCard title="影响因素" icon={<Calculator className="w-4 h-4" />} isDark={isDark}>
-            <div className="space-y-2 mt-2 max-h-52 overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin' }}>
+            <div className="space-y-2 mt-2 max-h-64 overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin' }}
               {factorImpacts.map(factor => (
                 <div
                   key={factor.factor}
@@ -755,32 +755,23 @@ function AppContent() {
           </AccordionCard>
 
           {/* Key Insight */}
-          <div
-            className="rounded-xl border p-3 transition-colors duration-300"
-            style={{
-              background: isDark
-                ? 'linear-gradient(135deg, rgba(146,64,14,0.12), rgba(15,23,42,0.5))'
-                : 'linear-gradient(135deg, rgba(254,243,199,0.3), rgba(255,255,255,0.7))',
-              borderColor: isDark ? 'rgba(245,158,11,0.2)' : 'rgba(245,158,11,0.25)',
-            }}
-          >
-            <h4 className="text-xs font-bold mb-1 flex items-center gap-1.5" style={{ color: isDark ? '#fbbf24' : '#b45309' }}>
-              <Lightbulb className="w-3.5 h-3.5" /> 关键洞察
-            </h4>
-            <p className="text-[11px] leading-relaxed" style={{ color: isDark ? '#94a3b8' : '#475569' }}>
-              KV Cache 通常是显存消耗的最大部分。高并发+长上下文场景下，KV Cache 可能超过模型权重数十倍。
-            </p>
-            <p className="text-[11px] leading-relaxed mt-1" style={{ color: isDark ? '#94a3b8' : '#475569' }}>
-              <span style={{ color: isDark ? '#34d399' : '#059669' }}>每个请求的 KV Cache 是独享的</span>（per-request），batch 推理只是让多个请求共享 GPU 计算单元，显存上不合并。
-            </p>
-            <p className="text-[11px] leading-relaxed mt-1" style={{ color: isDark ? '#94a3b8' : '#475569' }}>
-              <span style={{ color: isDark ? '#34d399' : '#059669' }}>优化:</span> GQA/MQA 架构、KV Cache 量化、PagedAttention、前缀缓存、Offloading。
-            </p>
-          </div>
+          <AccordionCard title="💡 关键洞察" icon={<Lightbulb className="w-4 h-4" />} defaultOpen isDark={isDark}>
+            <div className="mt-2 space-y-1.5 text-[11px] leading-relaxed" style={{ color: isDark ? '#94a3b8' : '#475569' }}>
+              <p>
+                KV Cache 通常是显存消耗的最大部分。高并发+长上下文场景下，KV Cache 可能超过模型权重数十倍。
+              </p>
+              <p>
+                <span style={{ color: isDark ? '#34d399' : '#059669' }}>每个请求的 KV Cache 是独享的</span>（per-request），batch 推理只是让多个请求共享 GPU 计算单元，显存上不合并。
+              </p>
+              <p>
+                <span style={{ color: isDark ? '#34d399' : '#059669' }}>优化:</span> GQA/MQA 架构、KV Cache 量化、PagedAttention、前缀缓存、Offloading。
+              </p>
+            </div>
+          </AccordionCard>
 
           {/* Production Optimizations */}
           <AccordionCard title="🚀 生产级显存优化" icon={<Zap className="w-4 h-4" />} isDark={isDark}>
-            <div className="mt-2 space-y-3 text-[11px] leading-relaxed" style={{ color: isDark ? '#94a3b8' : '#475569' }}>
+            <div className="mt-2 space-y-3 text-[11px] leading-relaxed max-h-[420px] overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin', color: isDark ? '#94a3b8' : '#475569' }}>
               {/* KV Cache Quant */}
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -867,32 +858,33 @@ function AppContent() {
                 </div>
               )}
 
-              {/* Optimization techniques list */}
-              <div className="space-y-2">
-                <div className="font-semibold text-[11px]" style={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>
+              {/* Optimization techniques list — compact table */}
+              <div>
+                <div className="font-semibold text-[11px] mb-1.5" style={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>
                   大厂常用优化手段
                 </div>
-                {productionOptimizations.map((opt) => (
-                  <div
-                    key={opt.id}
-                    className="rounded-md p-2 border"
-                    style={{
-                      backgroundColor: isDark ? 'rgba(15,23,42,0.4)' : 'rgba(255,255,255,0.5)',
-                      borderColor: isDark ? 'rgba(51,65,85,0.3)' : 'rgba(203,213,225,0.5)',
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="font-semibold" style={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>{opt.name}</span>
-                      <span className="text-[10px] px-1 py-0 rounded" style={{ backgroundColor: isDark ? 'rgba(52,211,153,0.1)' : 'rgba(5,150,105,0.08)', color: isDark ? '#34d399' : '#059669' }}>
-                        {opt.savingsRange}
-                      </span>
+                <div className="rounded-md overflow-hidden border" style={{ borderColor: isDark ? 'rgba(51,65,85,0.3)' : 'rgba(203,213,225,0.5)' }}>
+                  {productionOptimizations.map((opt, idx) => (
+                    <div
+                      key={opt.id}
+                      className="px-2.5 py-1.5 text-[10px] leading-relaxed"
+                      style={{
+                        backgroundColor: idx % 2 === 0
+                          ? (isDark ? 'rgba(15,23,42,0.3)' : 'rgba(248,250,252,0.6)')
+                          : (isDark ? 'rgba(15,23,42,0.15)' : 'rgba(255,255,255,0.3)'),
+                        borderBottom: idx < productionOptimizations.length - 1 ? `1px solid ${isDark ? 'rgba(51,65,85,0.2)' : 'rgba(203,213,225,0.3)'}` : 'none',
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold truncate" style={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>{opt.name}</span>
+                        <span className="text-[10px] px-1 py-0 rounded shrink-0" style={{ backgroundColor: isDark ? 'rgba(52,211,153,0.1)' : 'rgba(5,150,105,0.08)', color: isDark ? '#34d399' : '#059669' }}>
+                          {opt.savingsRange}
+                        </span>
+                      </div>
+                      <p className="mt-0.5" style={{ color: isDark ? '#64748b' : '#64748b' }}>{opt.description}</p>
                     </div>
-                    <p className="text-[10px] leading-relaxed">{opt.description}</p>
-                    <p className="text-[10px] mt-0.5" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
-                      支持引擎: {opt.engines.join(', ')}
-                    </p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </AccordionCard>
