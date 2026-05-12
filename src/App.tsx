@@ -701,7 +701,7 @@ function AppContent() {
 
           {/* Factors Accordion */}
           <AccordionCard title="影响因素" icon={<Calculator className="w-4 h-4" />} isDark={isDark}>
-            <div className="space-y-2 mt-2 max-h-64 overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin' }}
+            <div className="space-y-2 mt-2 max-h-64 overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin' }}>
               {factorImpacts.map(factor => (
                 <div
                   key={factor.factor}
