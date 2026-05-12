@@ -9,6 +9,7 @@ import {
   calculateVRAM,
   getGPURecommendations,
   factorImpacts,
+  productionOptimizations,
 } from './data/modelData';
 import {
   MemoryStick,
@@ -172,14 +173,17 @@ function AppContent() {
   const [selectedEngineId, setSelectedEngineId] = useState(inferenceEngines[0].id);
   const [contextLength, setContextLength] = useState(32768);
   const [concurrency, setConcurrency] = useState(1);
+  const [kvCacheQuantId, setKvCacheQuantId] = useState('fp16');
+  const [prefixCacheHitRate, setPrefixCacheHitRate] = useState(0);
 
   const model = qwen35Models.find(m => m.id === selectedModelId) || qwen35Models[0];
   const quant = quantMethods.find(q => q.id === selectedQuantId) || quantMethods[0];
   const engine = inferenceEngines.find(e => e.id === selectedEngineId) || inferenceEngines[0];
+  const kvCacheQuant = quantMethods.find(q => q.id === kvCacheQuantId);
 
   const vram = useMemo(
-    () => calculateVRAM({ model, quantMethod: quant, engine, contextLength, concurrency }),
-    [model, quant, engine, contextLength, concurrency]
+    () => calculateVRAM({ model, quantMethod: quant, engine, contextLength, concurrency, kvCacheQuant, prefixCacheHitRate: prefixCacheHitRate / 100 }),
+    [model, quant, engine, contextLength, concurrency, kvCacheQuant, prefixCacheHitRate]
   );
 
   const gpuRecs = useMemo(() => getGPURecommendations(vram.total), [vram.total]);
@@ -767,9 +771,131 @@ function AppContent() {
               KV Cache 通常是显存消耗的最大部分。高并发+长上下文场景下，KV Cache 可能超过模型权重数十倍。
             </p>
             <p className="text-[11px] leading-relaxed mt-1" style={{ color: isDark ? '#94a3b8' : '#475569' }}>
-              <span style={{ color: isDark ? '#34d399' : '#059669' }}>优化:</span> GQA/MQA 架构、KV Cache 量化、PagedAttention、前缀缓存。
+              <span style={{ color: isDark ? '#34d399' : '#059669' }}>每个请求的 KV Cache 是独享的</span>（per-request），batch 推理只是让多个请求共享 GPU 计算单元，显存上不合并。
+            </p>
+            <p className="text-[11px] leading-relaxed mt-1" style={{ color: isDark ? '#94a3b8' : '#475569' }}>
+              <span style={{ color: isDark ? '#34d399' : '#059669' }}>优化:</span> GQA/MQA 架构、KV Cache 量化、PagedAttention、前缀缓存、Offloading。
             </p>
           </div>
+
+          {/* Production Optimizations */}
+          <AccordionCard title="🚀 生产级显存优化" icon={<Zap className="w-4 h-4" />} isDark={isDark}>
+            <div className="mt-2 space-y-3 text-[11px] leading-relaxed" style={{ color: isDark ? '#94a3b8' : '#475569' }}>
+              {/* KV Cache Quant */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-semibold" style={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>KV Cache 量化</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: isDark ? 'rgba(59,130,246,0.15)' : 'rgba(37,99,235,0.1)', color: isDark ? '#60a5fa' : '#2563eb' }}>
+                    独立于此前的权重量化
+                  </span>
+                </div>
+                <div className="flex gap-1.5">
+                  {(['fp16', 'fp8', 'int8'] as const).map((id) => {
+                    const q = quantMethods.find(qm => qm.id === id);
+                    if (!q) return null;
+                    const active = kvCacheQuantId === id;
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => setKvCacheQuantId(id)}
+                        className="flex-1 px-2 py-1 rounded text-[11px] font-medium border transition-all"
+                        style={{
+                          backgroundColor: active ? (isDark ? 'rgba(59,130,246,0.2)' : 'rgba(37,99,235,0.1)') : 'transparent',
+                          borderColor: active ? (isDark ? 'rgba(59,130,246,0.4)' : 'rgba(37,99,235,0.35)') : (isDark ? 'rgba(51,65,85,0.5)' : 'rgba(203,213,225,0.6)'),
+                          color: active ? (isDark ? '#60a5fa' : '#2563eb') : (isDark ? '#94a3b8' : '#64748b'),
+                        }}
+                      >
+                        {q.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-1 text-[10px]" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
+                  默认 FP16 (2B/token)。FP8/INT8 可减半 KV Cache，精度损失 &lt;2%。
+                </p>
+              </div>
+
+              {/* Prefix Caching */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-semibold" style={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>前缀缓存命中率</span>
+                  <span className="font-mono font-bold" style={{ color: isDark ? '#60a5fa' : '#2563eb' }}>{prefixCacheHitRate}%</span>
+                </div>
+                <Slider
+                  value={[prefixCacheHitRate]}
+                  onValueChange={(v) => setPrefixCacheHitRate(v[0])}
+                  min={0}
+                  max={90}
+                  step={10}
+                  className="w-full"
+                />
+                <p className="mt-1 text-[10px]" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
+                  多个请求共享系统提示/RAG文档时，前缀 KV 只存一次。SGLang RadixAttention / vLLM Prefix Caching 实现。
+                </p>
+              </div>
+
+              {/* Savings comparison */}
+              {vram.originalKVCache && vram.originalKVCache > vram.kvCache && (
+                <div
+                  className="rounded-lg p-2 border"
+                  style={{
+                    backgroundColor: isDark ? 'rgba(59,130,246,0.08)' : 'rgba(37,99,235,0.05)',
+                    borderColor: isDark ? 'rgba(59,130,246,0.2)' : 'rgba(37,99,235,0.15)',
+                  }}
+                >
+                  <div className="text-[11px] font-semibold mb-1.5" style={{ color: isDark ? '#60a5fa' : '#2563eb' }}>
+                    优化效果对比
+                  </div>
+                  <div className="space-y-1 text-[11px]">
+                    <div className="flex justify-between">
+                      <span>原始 KV Cache</span>
+                      <span className="font-mono">{vram.originalKVCache.toFixed(2)} GB</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>优化后 KV Cache</span>
+                      <span className="font-mono" style={{ color: isDark ? '#34d399' : '#059669' }}>{vram.kvCache.toFixed(2)} GB</span>
+                    </div>
+                    <div className="flex justify-between font-semibold" style={{ color: isDark ? '#fbbf24' : '#b45309' }}>
+                      <span>节省显存</span>
+                      <span className="font-mono">{(vram.originalKVCache - vram.kvCache).toFixed(2)} GB ({((1 - vram.kvCache / vram.originalKVCache) * 100).toFixed(1)}%)</span>
+                    </div>
+                    <div className="flex justify-between font-semibold pt-1 border-t" style={{ borderColor: isDark ? 'rgba(59,130,246,0.2)' : 'rgba(37,99,235,0.15)' }}>
+                      <span>总显存需求</span>
+                      <span className="font-mono">{vram.total.toFixed(2)} GB</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Optimization techniques list */}
+              <div className="space-y-2">
+                <div className="font-semibold text-[11px]" style={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>
+                  大厂常用优化手段
+                </div>
+                {productionOptimizations.map((opt) => (
+                  <div
+                    key={opt.id}
+                    className="rounded-md p-2 border"
+                    style={{
+                      backgroundColor: isDark ? 'rgba(15,23,42,0.4)' : 'rgba(255,255,255,0.5)',
+                      borderColor: isDark ? 'rgba(51,65,85,0.3)' : 'rgba(203,213,225,0.5)',
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="font-semibold" style={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>{opt.name}</span>
+                      <span className="text-[10px] px-1 py-0 rounded" style={{ backgroundColor: isDark ? 'rgba(52,211,153,0.1)' : 'rgba(5,150,105,0.08)', color: isDark ? '#34d399' : '#059669' }}>
+                        {opt.savingsRange}
+                      </span>
+                    </div>
+                    <p className="text-[10px] leading-relaxed">{opt.description}</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
+                      支持引擎: {opt.engines.join(', ')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </AccordionCard>
         </div>
       </main>
 

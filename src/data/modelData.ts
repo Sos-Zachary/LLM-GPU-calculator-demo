@@ -380,6 +380,7 @@ export const concurrencyPresets = [
 export interface VRAMBreakdown {
   modelWeights: number;      // GB
   kvCache: number;           // GB
+  originalKVCache?: number;  // GB (before optimization)
   activations: number;       // GB
   engineOverhead: number;    // GB
   total: number;             // GB
@@ -391,7 +392,8 @@ export interface CalculationParams {
   engine: InferenceEngine;
   contextLength: number;
   concurrency: number;
-  kvCacheQuant?: QuantMethod;  // optional KV cache quantization (often same as weight quant)
+  kvCacheQuant?: QuantMethod;     // optional KV cache quantization (default FP16)
+  prefixCacheHitRate?: number;    // 0-1, prefix caching hit rate (default 0)
 }
 
 /**
@@ -408,11 +410,11 @@ export interface CalculationParams {
  *    (covers PagedAttention metadata, CUDA workspace, activation buffers, etc.)
  */
 export function calculateVRAM(params: CalculationParams): VRAMBreakdown {
-  const { model, quantMethod, engine, contextLength, concurrency } = params;
+  const { model, quantMethod, engine, contextLength, concurrency, kvCacheQuant, prefixCacheHitRate } = params;
 
-  // KV cache bytes per parameter: most engines keep KV Cache in FP16 even with INT4 weights.
-  // Some advanced engines support KV cache quantization (e.g. INT8 KV Cache via KVQuant).
-  const kvBytesPerParam = quantMethod.bits <= 4 ? 2 : quantMethod.bytesPerParam;
+  // KV cache bytes per parameter: default FP16 (2 bytes).
+  // Advanced engines support KV cache quantization (FP8/INT8) independent of weight quantization.
+  const kvBytesPerParam = kvCacheQuant ? kvCacheQuant.bytesPerParam : 2;
 
   // 1. Model Weights — ALL parameters must be loaded (including all experts for MoE)
   const modelWeightsGB = model.totalParams * 1e9 * quantMethod.bytesPerParam / (1024 ** 3);
@@ -421,7 +423,15 @@ export function calculateVRAM(params: CalculationParams): VRAMBreakdown {
   //    NOT on parameter count. MoE benefits: KV Cache scales with active params' config.
   const perTokenKVBytes = 2 * model.layers * model.numKVHeads * model.headDim * kvBytesPerParam;
   const totalKVCacheBytes = perTokenKVBytes * contextLength * concurrency;
-  const kvCacheGB = totalKVCacheBytes / (1024 ** 3);
+  const originalKVCacheGB = totalKVCacheBytes / (1024 ** 3);
+
+  // Apply prefix caching: shared prefix KV is stored once and reused across requests.
+  // hitRate=0.7 means 70% of KV Cache is shared and only stored once.
+  const hitRate = prefixCacheHitRate ?? 0;
+  const effectiveConcurrency = concurrency === 1
+    ? 1
+    : 1 + (concurrency - 1) * (1 - hitRate);
+  const kvCacheGB = originalKVCacheGB * (effectiveConcurrency / concurrency);
 
   // 3. Activations — simplified estimation for inference (single forward pass, no gradients).
   // Factor 18 accounts for: Q/K/V/O projections (4x) + FFN up/gate/down (3x) + buffers (~11x).
@@ -438,6 +448,7 @@ export function calculateVRAM(params: CalculationParams): VRAMBreakdown {
   return {
     modelWeights: Math.round(modelWeightsGB * 100) / 100,
     kvCache: Math.round(kvCacheGB * 100) / 100,
+    originalKVCache: Math.round(originalKVCacheGB * 100) / 100,
     activations: Math.round(activationsGB * 100) / 100,
     engineOverhead: Math.round(overheadGB * 100) / 100,
     total: Math.round(total * 100) / 100,
@@ -545,5 +556,69 @@ export const factorImpacts: FactorImpact[] = [
       'GQA(8 KV heads): KV Cache 降低8x → 12.5%',
       'MQA(1 KV head): KV Cache 降低64x → 1.56%',
     ],
+  },
+];
+
+// ==========================================
+// Production Optimization Techniques
+// ==========================================
+
+export interface ProductionOptimization {
+  id: string;
+  name: string;
+  description: string;
+  impact: string;
+  savingsRange: string;
+  engines: string[];
+}
+
+export const productionOptimizations: ProductionOptimization[] = [
+  {
+    id: 'kv-cache-quant',
+    name: 'KV Cache 量化',
+    description: '将 KV Cache 从 FP16 压缩到 FP8 或 INT8。与权重量化独立，可叠加使用。vLLM/TensorRT-LLM 原生支持。',
+    impact: 'KV Cache 显存减半',
+    savingsRange: '~50% KV Cache',
+    engines: ['vLLM', 'TensorRT-LLM', 'SGLang'],
+  },
+  {
+    id: 'prefix-caching',
+    name: 'Prefix Caching (RadixAttention)',
+    description: '多个请求共享相同前缀（系统提示、RAG文档）时，前缀部分的 KV 只存一份，后续请求复用。SGLang RadixAttention 和 vLLM Prefix Caching 已实现。',
+    impact: '共享前缀只存一次',
+    savingsRange: '10%-70% KV Cache (取决于前缀长度和命中率)',
+    engines: ['SGLang', 'vLLM'],
+  },
+  {
+    id: 'paged-attention',
+    name: 'PagedAttention',
+    description: '将 KV Cache 分页存储到非连续内存块，按需分配。消除预分配浪费和内存碎片，显存利用率从 ~70% 提升到 95%+。',
+    impact: '消除内存碎片和预分配浪费',
+    savingsRange: '20%-40% 整体显存利用率提升',
+    engines: ['vLLM', 'TensorRT-LLM', 'SGLang'],
+  },
+  {
+    id: 'continuous-batching',
+    name: 'Continuous Batching',
+    description: '新请求随时加入 batch，完成的请求随时退出（不互相等待）。对比 Static Batching，吞吐量提升 10-20 倍，但显存模型不变。',
+    impact: '吞吐量提升，显存模型不变',
+    savingsRange: '10-20x 吞吐量提升',
+    engines: ['vLLM', 'TensorRT-LLM', 'SGLang'],
+  },
+  {
+    id: 'speculative-decoding',
+    name: '投机解码 (Speculative Decoding)',
+    description: '用小模型（draft model）快速生成候选 token，大模型并行验证。速度提升 1.5-2.5 倍，需额外加载 draft model 显存。',
+    impact: '推理延迟降低',
+    savingsRange: '1.5-2.5x 速度提升，额外 ~5-20GB draft model',
+    engines: ['vLLM', 'TensorRT-LLM'],
+  },
+  {
+    id: 'offloading',
+    name: 'KV Cache Offloading',
+    description: '将不活跃的 KV Cache 从 GPU HBM 卸载到 CPU DRAM 或 SSD。Mooncake、vLLM v1 架构支持。适合超长上下文+高并发场景。',
+    impact: '突破单卡显存上限',
+    savingsRange: '可将 KV Cache 扩展到 TB 级',
+    engines: ['Mooncake', 'vLLM (v1)', 'TensorRT-LLM'],
   },
 ];
