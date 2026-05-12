@@ -4,13 +4,13 @@
 
 **为 Qwen3.5 全系列模型打造的专业 GPU 显存估算工具。**
 
-[![Live Demo](https://img.shields.io/badge/🔗-在线演示-blue)](https://sos-zachary.github.io/GPUmemory-calculator-demo/)
+[![Live Demo](https://img.shields.io/badge/🔗-在线演示-blue)](https://sos-zachary.github.io/LLM-GPU-calculator-demo/)
 [![React](https://img.shields.io/badge/-React-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/-Vite-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![License](https://img.shields.io/badge/-Apache--2.0-green)](./LICENSE)
 
-🚀 [**https://sos-zachary.github.io/GPUmemory-calculator-demo/**](https://sos-zachary.github.io/GPUmemory-calculator-demo/)
+🚀 [**https://sos-zachary.github.io/LLM-GPU-calculator-demo/**](https://sos-zachary.github.io/LLM-GPU-calculator-demo/)
 
 </div>
 

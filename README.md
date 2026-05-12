@@ -2,10 +2,10 @@
 
 # 🧮 LLM VRAM Calculator · LLM 显存占用计算器
 
-[![Live Demo](https://img.shields.io/badge/🔗-Live%20Demo-blue)](https://sos-zachary.github.io/GPUmemory-calculator-demo/)
+[![Live Demo](https://img.shields.io/badge/🔗-Live%20Demo-blue)](https://sos-zachary.github.io/LLM-GPU-calculator-demo/)
 [![License](https://img.shields.io/badge/-Apache--2.0-green)](./LICENSE)
 
-🚀 [**https://sos-zachary.github.io/GPUmemory-calculator-demo/**](https://sos-zachary.github.io/GPUmemory-calculator-demo/)
+🚀 [**https://sos-zachary.github.io/LLM-GPU-calculator-demo/**](https://sos-zachary.github.io/LLM-GPU-calculator-demo/)
 
 </div>
 
