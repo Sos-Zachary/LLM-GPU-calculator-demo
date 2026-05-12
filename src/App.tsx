@@ -600,7 +600,7 @@ function AppContent() {
 
         {/* ====== RIGHT COLUMN: Stacked Info Cards ====== */}
         <div className="col-span-3 flex flex-col gap-1.5 min-h-0 overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin' }}>
-          {/* Formula Accordion -->
+          {/* Formula Accordion */}
           <AccordionCard title="计算公式" icon={<BookOpen className="w-4 h-4" />} defaultOpen isDark={isDark}>
             <div className="space-y-2 mt-2">
               <FormulaBlock
